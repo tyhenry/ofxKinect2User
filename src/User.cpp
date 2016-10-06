@@ -189,26 +189,28 @@ void User::drawHandState(JointType hand) {
 	ofPopStyle();
 }
 
-ofMesh& User::buildMesh(Kinect* kinect) {
+bool User::buildMesh(Kinect* kinect, int step, float facesMaxLength) {
 
-	// body id
+	// get body id
 	if (_bodyPtr == nullptr) {
 		ofLogError("User::buildMesh") << "can't build mesh, no user / body!";
-		return;
+		return false;
 	}
 	const auto& bodyId = _bodyPtr->bodyId;
 	if (bodyId < 0 || bodyId > 5) {
 		ofLogError("User::buildMesh") << " can't build mesh, invalid bodyId: " << bodyId;
+		return false;
 	}
 
-	// kinect
+	// get kinect
 	if (kinect == nullptr) {
 		ofLogError("User::buildMesh") << "can't build mesh, kinect is null";
-		return;
+		return false;
 	}
-	if (!kinect->hasSource<ofxKFW2::Source::BodyIndex>()) {
-		ofLogError("User::buildMesh") << "can't build mesh, no body index source";
-		return;
+	// check coordinate mapper
+	if (_coordMapperPtr == nullptr) {
+		ofLogError("User::buildMesh") << "can't build mesh, no coordinate mapper";
+		return false;
 	}
 
 	// depth, body index and color sources
@@ -217,20 +219,15 @@ ofMesh& User::buildMesh(Kinect* kinect) {
 	auto& colorPix = kinect->getColorSource()->getPixels();
 	if (!depthPix.size()) {
 		ofLogError("User::buildMesh") << "can't build mesh, no depth pixels read";
-		return;
+		return false;
 	}
 	if (!bodyIdxPix.size()) {
 		ofLogError("User::buildMesh") << "can't build mesh,  body index source not allocated";
-		return;
+		return false;
 	}
 	if (!colorPix.size()) {
 		ofLogError("User::buildMesh") << "can't build mesh, color index source not allocated";
-		return;
-	}
-
-	if (_coordMapperPtr == nullptr) {
-		ofLogError("User::buildMesh") << "can't build mesh, no coordinate mapper";
-		return;
+		return false;
 	}
 
 	// get color coords of depth pixels
@@ -238,36 +235,131 @@ ofMesh& User::buildMesh(Kinect* kinect) {
 	_coordMapperPtr->MapDepthFrameToColorSpace(512*424, (UINT16*)depthPix.getPixels(), 512*424, (ColorSpacePoint*)_depthToColorCoords.data());
 
 	// loop through body idx pix
-	//ofRectangle bounds = ofRectangle(-1, -1, 0, 0);
-	for (int y = 0; y < 424; y++) {
-		for (int x = 0; x < 512; x++) {
-			_bodyImg.setColor(x, y, ofColor::white);
+	//
+	// mesh triangle formatting:
+	//  tl.____t.
+	//    |\   /|
+	//    |  X  |
+	//  l.|/___\|
+	//          *i
+	//
+	bool isBody[512 * 424]; // tracks body status in depth img
+
+	// MESH generator
+
+	// prep mesh
+	_userMesh.clear();
+	_userMesh.setMode(OF_PRIMITIVE_TRIANGLES);
+
+	// add color img texture coords
+	_userMesh.addTexCoords(_depthToColorCoords);
+
+	// add depth->camera space vertices
+	_userMesh.getVertices().resize(512 * 424);
+	_coordMapperPtr->MapDepthFrameToCameraSpace(512 * 424, (UINT16*)depthPix.getPixels(), 512 * 424, (CameraSpacePoint*)_userMesh.getVerticesPointer());
+	auto vertices = _userMesh.getVerticesPointer();
+
+	// loop through body idx px, find body px, add indices to mesh
+	for (int y = 0; y <= 424-step; y+=step) {
+		for (int x = 0; x <= 512-step; x+=step) {
+
+			// indices in body idx px
 			int i = y * 512 + x;
-			// check if color == body index
+			int t = i - 512 * step;
+			int l = i - step;
+			int tl = l - 512 * step;
+
+			// check if body idx color is this body
 			int val = roundf(bodyIdxPix[i]);
-			if (val == bodyId) { // part of the body
-				//if (bounds.x == -1) bounds.x = x; // first x
-				//if (x > bounds.x) bounds.width = x - bounds.x;
-				//if (bounds.y == -1) bounds.y = y;
-				//if (bounds.height == 0) bounds.height = bounds.height + 1;
-				ofVec2f colPt = _depthToColorCoords[i];
-				colPt.x = floor(colPt.x); // round to int px
-				colPt.y = floor(colPt.y); // round to int px
-				if (colPt.x < 0 || colPt.x >= 1920 || colPt.y < 0 || colPt.y >= 1080) {
-					continue; // skip, outside of color img
-				}
-				_bodyImg.setColor(x, y, colorPix.getColor(colPt.x, colPt.y)); // get color img on body
-				// build mesh points
-				
+			if (val == bodyId) {
+				isBody[i] = true; // part of the body
 			}
+			else isBody[i] = false;
+
+			if (t < 0 || l < 0) continue; // other points outside frame, move on
+
+			// check for triangles within body
+
+			// camera space points
+			const ofVec3f & v = vertices[i];
+			const ofVec3f & vT = vertices[t];
+			const ofVec3f & vL = vertices[l];
+			const ofVec3f & vTL = vertices[tl];
+
+			if (isBody[i] && !isBody[tl]) { // only one triangle option
+
+				if (isBody[t] && isBody[l]) {
+					// make triangle:
+					//   /|
+					// /__|
+
+					// check distance
+					if (v.z > 0 && vT.z > 0 && vL.z > 0
+						&& abs(v.z - vT.z) < facesMaxLength
+						&& abs(v.z - vL.z) < facesMaxLength) {
+						const ofIndexType indices[3] = { i, t, l };
+						_userMesh.addIndices(indices, 3);
+					}
+				}
+			}
+			else if (isBody[tl] && !isBody[i]) { // only one triangle option
+
+				if (isBody[t] && isBody[l]) {
+					// make triangle:
+					// ____
+					// |  /
+					// |/
+
+					// check distance
+					if (vTL.z > 0 && vT.z > 0 && vL.z > 0
+						&& abs(vTL.z - vT.z) < facesMaxLength
+						&& abs(vTL.z - vL.z) < facesMaxLength) {
+						const ofIndexType indices[3] = { tl, t, l };
+						_userMesh.addIndices(indices, 3);
+					}
+				}
+			}
+			else { // both i and tl are body, try inverted triangles
+				if (isBody[l]) {
+					// make triangle:
+					// |\
+					// |__\
+
+					// check distance
+					if (v.z > 0 && vTL.z > 0 && vL.z > 0
+						&& abs(v.z - vTL.z) < facesMaxLength
+						&& abs(v.z - vL.z) < facesMaxLength) {
+						const ofIndexType indices[3] = { i, tl, l };
+						_userMesh.addIndices(indices, 3);
+					}
+				}
+				if (isBody[t]) {
+					// make triangle:
+					// ____
+					// \  |
+					//   \|
+
+					// check distance
+					if (v.z > 0 && vTL.z > 0 && vT.z > 0
+						&& abs(v.z - vTL.z) < facesMaxLength
+						&& abs(v.z - vT.z) < facesMaxLength) {
+						const ofIndexType indices[3] = { i, tl, t };
+						_userMesh.addIndices(indices, 3);
+					}
+				}
+			}		
 		}
-	}
+	} // end loop through body idx pixels
 
+	return true;
+}
 
+void User::drawMeshFaces() {
+	_userMesh.drawFaces();
+}
 
-
-
-
+void User::drawMeshWireframe() {
+	_userMesh.drawWireframe();
 }
 
 void User::clear() {

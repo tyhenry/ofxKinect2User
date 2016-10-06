@@ -22,7 +22,7 @@ public:
 		: _coordMapperPtr(coordinateMapperPtr) {
 		// for mesh generator:
 		_depthToColorCoords.resize(512 * 424); // depth size
-		_bodyImg.allocate(512, 424, OF_IMAGE_COLOR);
+		_depthToCameraCoords.resize(512 * 412);
 	}
 
 	void setCoordinateMapper(ICoordinateMapper* coordinateMapperPtr)
@@ -59,7 +59,9 @@ public:
 	void drawHandStates();
 	void drawHandState(JointType hand);
 
-	ofMesh& buildMesh(Kinect* kinect);
+	bool buildMesh(Kinect* kinect, int step = 1, float facesMaxLength = 0.1);
+	void drawMeshWireframe();
+	void drawMeshFaces();
 	// extracts body shape on color img from kinect
 	// uses color->world coords to generate mesh, transformed by worldScale & worldTranslate
 	
@@ -82,5 +84,5 @@ protected:
 
 	ofMesh _userMesh;
 	vector<ofVec2f> _depthToColorCoords;
-	ofImage _bodyImg;
+	vector<ofVec3f> _depthToCameraCoords;
 };
