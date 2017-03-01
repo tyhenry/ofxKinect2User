@@ -4,8 +4,10 @@ namespace ofxKinectForWindows2 {
 
 	bool User::setBody(kBody* bodyPtr) { // returns true if change to user
 		
-		if (bodyPtr != _bodyPtr) {
+		bool sameBody = (!bodyPtr && !_bodyPtr) || (bodyPtr == _bodyPtr);
+		if (!sameBody) {
 			_startTime = bodyPtr ? ofGetElapsedTimef() : 0; // 0 if null body
+			_bodyPtr = bodyPtr;
 			ofLogVerbose("ofxKFW2::User") << "new user - ptr: " << (bodyPtr ? ofToString(bodyPtr) : "null");
 			return true;
 		}
