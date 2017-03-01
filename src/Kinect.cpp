@@ -78,7 +78,7 @@ namespace ofxKinectForWindows2 {
 		// find c
 
 		// pt = (x,y,z) + s * (pX,pY,pZ) ->
-		// pt = ((x + c*pX), (y + c*pY), (z + c*zY))
+		// pt = ((x + s*pX), (y + s*pY), (z + s*zY))
 		// using plane equation Ax+By+Cz+D = 0...
 		// pX * (x + c*pX) + pY * (y + c*zY) + pZ * (z + c*pZ) + D = 0
 
@@ -102,10 +102,8 @@ namespace ofxKinectForWindows2 {
 
 			if (!bodies[i].tracked) continue; // skip untracked body
 
-			ofVec3f lFoot = bodies[i].joints.at(JointType_SpineBase).getPosition();
-			ofVec3f rFoot = bodies[i].joints.at(JointType_FootRight).getPosition();
-			ofVec3f cFoot = lFoot.getMiddle(rFoot);
-			ofVec2f floorPos = getClosestPtOnFloorPlane(cFoot);
+			ofVec3f spine = bodies[i].joints.at(JointType_SpineBase).getPosition();
+			ofVec2f floorPos = getClosestPtOnFloorPlane(spine);
 
 			if (floorBounds.inside(floorPos)) {
 				bodiesIn.push_back(&bodies[i]);

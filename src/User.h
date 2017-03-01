@@ -46,8 +46,8 @@ namespace ofxKinectForWindows2 {
 		void setMirrorX(bool mirror) { _bMirrorX = mirror; }
 		const bool getMirrorX() const { return _bMirrorX; }
 
-		bool setBody(kBody* body); // returns false if same body
-		bool update(); // false is _bodyPtr is nullptr
+		bool setBody(kBody* body);	// returns true if change to user
+		bool update(); // false if _bodyPtr is nullptr
 
 		bool jointExists(JointType type, bool prev = false);
 		ofVec2f getJoint2dPos(JointType type, bool prev = false);
@@ -60,6 +60,9 @@ namespace ofxKinectForWindows2 {
 		const HandState getRightHandState(bool prev = false) const;
 		bool isRightHandUp();
 		bool isLeftHandUp();
+
+		ofVec3f getPosOnFloor(Kinect* kinect, bool world=true);
+		ofVec2f getPosOnFloorPlane(Kinect* kinect)	{ return getPosOnFloor(kinect,false); }
 
 		const bool hasBody() const { return (_bodyPtr != nullptr); }
 		bool hasCoordinateMapper() { return (_coordMapperPtr != nullptr); }

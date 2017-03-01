@@ -2,19 +2,14 @@
 
 namespace ofxKinectForWindows2 {
 
-	bool User::setBody(kBody* bodyPtr) { // returns true if new valid body
-		bool bNewUser = false;
-		if (bodyPtr){
-			if (bodyPtr != _bodyPtr) {
-				_startTime = ofGetElapsedTimef();
-				bNewUser = true;
-			}
+	bool User::setBody(kBody* bodyPtr) { // returns true if change to user
+		
+		if (bodyPtr != _bodyPtr) {
+			_startTime = bodyPtr ? ofGetElapsedTimef() : 0; // 0 if null body
+			ofLogVerbose("ofxKFW2::User") << "new user - ptr: " << (bodyPtr ? ofToString(bodyPtr) : "null");
+			return true;
 		}
-		else { // null body
-			_startTime = 0;
-		}
-		_bodyPtr = bodyPtr; // set
-		return bNewUser;
+		return false;
 	}
 
 	// update
@@ -130,6 +125,17 @@ namespace ofxKinectForWindows2 {
 		if (getJoint2dPos(JointType_HandLeft).y < getJoint2dPos(JointType_Head).y)
 			return true;
 		return false;
+	}
+
+	ofVec3f User::getPosOnFloor(Kinect* kinect, bool world)
+	{
+		if (!hasBody() || !kinect) return ofVec3f();
+
+		ofVec3f lFoot = _bodyPtr->joints.at(JointType_FootLeft).getPosition();
+		ofVec3f rFoot = _bodyPtr->joints.at(JointType_FootRight).getPosition();
+		ofVec3f cFoot = lFoot.getMiddle(rFoot);
+		if (world) return kinect->getClosestPtOnFloorWorld(cFoot);
+		return kinect->getClosestPtOnFloorPlane(cFoot);
 	}
 
 	// draw
