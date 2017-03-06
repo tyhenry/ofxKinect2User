@@ -127,7 +127,7 @@ namespace ofxKinectForWindows2 {
 	vector<kBody*> Kinect::getBodiesWithinBounds(ofRectangle floorBounds) {
 
 		auto bodies = getTrackedBodies();
-		vector<kBody*> bodiesIn;
+		map<float, kBody*> bodiesInByDist;
 
 		for (auto body : bodies) {
 
@@ -140,8 +140,13 @@ namespace ofxKinectForWindows2 {
 			ofVec2f floorXY(floorPos.x, floorPos.z);
 
 			if (floorBounds.inside(floorXY)) {
-				bodiesIn.push_back(body);
+				bodiesInByDist[floorXY.y] = body;
 			}
+		}
+
+		vector<kBody*> bodiesIn;
+		for (auto body : bodiesInByDist) {
+			bodiesIn.push_back(body.second);
 		}
 		return bodiesIn;
 	}
