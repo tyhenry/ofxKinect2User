@@ -5,16 +5,19 @@
 
 namespace ofxKinectForWindows2 {
 
-	class User {
+	class User : public ofNode {
 	public:
 		struct HandStates {
 			HandState left = HandState_Unknown;
 			HandState right = HandState_Unknown;
 		};
 		struct JointData {
-			ofVec2f pos2d = ofVec2f(0, 0);
-			ofVec3f pos3d = ofVec3f(0, 0, 0);
-			ofQuaternion orientation;
+			ofVec2f pos2d;				// color coords (can be reflected around x)
+			ofVec2f& posRgb = pos2d;
+			ofVec3f pos3d;				// transformed by node
+			ofVec3f pos3dRaw;			// kinect raw
+			ofQuaternion orientation;	
+			ofQuaternion orientationRaw;
 			JointData* parent = nullptr;
 			TrackingState state = TrackingState_NotTracked;
 		};
@@ -23,10 +26,15 @@ namespace ofxKinectForWindows2 {
 		typedef const ofxKFW2::Data::Body kBody;
 
 		User(ICoordinateMapper* coordinateMapperPtr = nullptr)
-			: _coordMapperPtr(coordinateMapperPtr) {
+			: _coordMapperPtr(coordinateMapperPtr) 
+		{
 			// for mesh generator:
 			_depthToColorCoords.resize(512 * 424); // depth size
 			_depthToCameraCoords.resize(512 * 412);
+
+			// make x reflection matrix
+			ofVec4f yzPlane(1,0,0,0);
+			reflectionX = reflectionMatrix(yzPlane);
 		}
 		//User(Kinect& kinect) { User(kinect.getCoordinateMapper()); }
 
@@ -38,13 +46,23 @@ namespace ofxKinectForWindows2 {
 			return setCoordinateMapper(kinect.getCoordinateMapper());
 		}
 
-		void setWorldScale(ofVec3f scale) { _worldScale = scale; }
-		void setWorldScale(float scale) { setWorldScale(ofVec3f(scale)); }
-		const ofVec3f getWorldScale() const { return _worldScale; }
-		void setWorldTranslate(ofVec3f translate) { _worldTranslate = translate; }
-		const ofVec3f getWorldTranslate() const { return _worldTranslate; }
-		void setMirrorX(bool mirror) { _bMirrorX = mirror; }
-		const bool getMirrorX() const { return _bMirrorX; }
+		void setWorldScale(ofVec3f scale)			{ setScale(scale); }
+		void setWorldScale(float scale)				{ setScale(scale); }
+		void setWorldTranslate(ofVec3f translate)	{ setPosition(translate); }
+		const ofVec3f getWorldScale() const			{ return getScale(); }
+		const ofVec3f getWorldTranslate() const		{ return getPosition(); }
+
+		//void setWorldScale(ofVec3f scale) { _worldScale = scale; }
+		//void setWorldScale(float scale) { setWorldScale(ofVec3f(scale)); }
+		//const ofVec3f getWorldScale() const { return _worldScale; }
+		//void setWorldTranslate(ofVec3f translate) { _worldTranslate = translate; }
+		//const ofVec3f getWorldTranslate() const { return _worldTranslate; }
+
+		void setReflection(ofVec4f plane)	{ reflection = reflectionMatrix(plane); _bMirrorX = false; }
+		ofMatrix4x4 getReflection()			{ return reflection; }
+
+		void setMirrorX(bool mirror)	{ reflection = mirror ? reflectionX : ofMatrix4x4(); _bMirrorX = mirror; }
+		const bool getMirrorX() const	{ return _bMirrorX; }
 
 		bool setBody(kBody* body);	// returns true if change to user
 		bool update(); // false if _bodyPtr is nullptr
@@ -52,7 +70,9 @@ namespace ofxKinectForWindows2 {
 		bool jointExists(JointType type, bool prev = false);
 		ofVec2f getJoint2dPos(JointType type, bool prev = false);
 		ofVec3f getJoint3dPos(JointType type, bool prev = false); // in color space
+		ofVec3f getJoint3dPosRaw(JointType type, bool prev = false);
 		ofQuaternion getJointOrientation(JointType type, bool prev = false);
+		ofQuaternion getJointOrientationRaw(JointType type, bool prev = false);
 		const JointMap getJointMap() const { return _joints; }
 
 		TrackingState getTrackingState(JointType type, bool prev = false);
@@ -93,6 +113,8 @@ namespace ofxKinectForWindows2 {
 		ofVec3f _worldScale = ofVec3f(1, 1, 1);
 		ofVec3f _worldTranslate = ofVec3f(0, 0, 0);
 		bool _bMirrorX = false;
+
+		ofMatrix4x4 reflection;
 		
 		float _startTime = 0; // time when new user init'ed
 
@@ -104,6 +126,13 @@ namespace ofxKinectForWindows2 {
 		ofMesh _userMesh;
 		vector<ofVec2f> _depthToColorCoords;
 		vector<ofVec3f> _depthToCameraCoords;
+
+		ofMatrix4x4 reflectionMatrix(ofVec4f plane);
+
+	private:
+
+		ofMatrix4x4 reflectionX;
+
 	};
 
 }

@@ -4,14 +4,12 @@ namespace ofxKinectForWindows2 {
 
 	bool User::setBody(kBody* bodyPtr) { // returns true if change to user
 		
-		bool sameBody = (!bodyPtr && !_bodyPtr) || (bodyPtr == _bodyPtr);
-		if (!sameBody) {
-			_startTime = bodyPtr ? ofGetElapsedTimef() : 0; // 0 if null body
-			_bodyPtr = bodyPtr;
-			ofLogVerbose("ofxKFW2::User") << "new user - ptr: " << (bodyPtr ? ofToString(bodyPtr) : "null");
-			return true;
-		}
-		return false;
+		if ((!bodyPtr && !_bodyPtr) || ( bodyPtr == _bodyPtr)) return false;
+		
+		_bodyPtr = bodyPtr;
+		_startTime = bodyPtr ? ofGetElapsedTimef() : 0; // 0 if null body
+		ofLogVerbose("ofxKFW2::User") << "set new body - ptr: " << (bodyPtr ? ofToString(bodyPtr) : "null");
+		return true;
 	}
 
 	// update
@@ -41,27 +39,40 @@ namespace ofxKinectForWindows2 {
 		// calc new joint positions (world > color coords)
 		for (auto& joint : joints) {
 
-			ofVec3f& p3d = _joints[joint.first].pos3d = joint.second.getPosition();
-			ofVec2f& p2d = _joints[joint.first].pos2d = joint.second.getProjected(_coordMapperPtr);
-			_joints[joint.second.getType()].state = joint.second.getTrackingState();
+			// grab basic joint data
+
+			ofVec3f& p3dRaw		= _joints[joint.first].pos3dRaw			= joint.second.getPosition();
+			ofQuaternion& oRaw	= _joints[joint.first].orientationRaw	= joint.second.getOrientation();
+			ofVec3f& p3d		= _joints[joint.first].pos3d;
+			ofQuaternion& ori	= _joints[joint.first].orientation;
+			ofVec2f& p2d		= _joints[joint.first].pos2d			= joint.second.getProjected(_coordMapperPtr);
+								  _joints[joint.first].state			= joint.second.getTrackingState();
+
+			// transform 
+
+			// position
+			
+			p3d = p3dRaw * reflection * getGlobalTransformMatrix();
+
+			// orientation
+
+			ori = oRaw ;//* getGlobalOrientation();
+
 
 			if (_bMirrorX) {
 				// mirror 2d
 				p2d.x = 1920 - p2d.x; // flip within color space
-				// mirror 3d
-				p3d.x *= -1; // flip across y axis
+
+				//ofVec3f unitAxis(1,1,1);
+				//unitAxis.normalize();
+
+				//ofVec3f uAxisRaw = unitAxis * oRaw;
+				//ofVec3f uAxisReflect = uAxisRaw * reflection;
+				//ofQuaternion oRef;
+				//oRef.makeRotate(uAxisRaw,uAxisReflect);
+
+				//ori = ori * oRef;
 			}
-
-			p3d += _worldTranslate;
-			p3d *= _worldScale;
-
-			// ORIENTATION
-			auto o = joint.second.getOrientation();
-			if (_bMirrorX) {
-				// not working yet
-			}
-			_joints[joint.first].orientation = o;
-
 		}
 
 		// get new hand states
@@ -90,10 +101,24 @@ namespace ofxKinectForWindows2 {
 		return pos;
 	}
 
+	ofVec3f User::getJoint3dPosRaw(JointType type, bool prev) {
+		ofVec3f pos;
+		if (jointExists(type, prev))
+			pos = (prev ? _pJoints : _joints)[type].pos3dRaw;
+		return pos;
+	}
+
 	ofQuaternion User::getJointOrientation(JointType type, bool prev) {
 		ofQuaternion q;
 		if (jointExists(type, prev))
 			q = (prev ? _pJoints : _joints)[type].orientation;
+		return q;
+	}
+
+	ofQuaternion User::getJointOrientationRaw(JointType type, bool prev) {
+		ofQuaternion q;
+		if (jointExists(type, prev))
+			q = (prev ? _pJoints : _joints)[type].orientationRaw;
 		return q;
 	}
 
@@ -136,7 +161,7 @@ namespace ofxKinectForWindows2 {
 		ofVec3f lFoot = _bodyPtr->joints.at(JointType_FootLeft).getPosition();
 		ofVec3f rFoot = _bodyPtr->joints.at(JointType_FootRight).getPosition();
 		ofVec3f cFoot = lFoot.getMiddle(rFoot);
-		if (world) return kinect->getClosestPtOnFloorWorld(cFoot);
+		if (world) return kinect->getClosestPtOnFloor(cFoot);
 		return kinect->getClosestPtOnFloorPlane(cFoot);
 	}
 
@@ -179,10 +204,10 @@ namespace ofxKinectForWindows2 {
 			ofDrawSphere(pos, rad);
 
 			if (b3d) {
-				ofPushMatrix();
 				ofMatrix4x4 r, t;
 				r.makeRotationMatrix(orient);
 				t.makeTranslationMatrix(pos);
+				ofPushMatrix();
 				ofMultMatrix(r*t);
 				ofDrawAxis(certain ? 5 : 10);
 				ofPopMatrix();
@@ -421,6 +446,33 @@ namespace ofxKinectForWindows2 {
 		_pJoints.clear();
 		_handStates = HandStates();
 		_pHandStates = HandStates();
+	}
+
+	ofMatrix4x4 User::reflectionMatrix(ofVec4f plane)
+	{
+		ofMatrix4x4 ref;
+
+		ref(0,0) = (1. - 2. * plane[0] * plane[0]);
+		ref(1,0) = (-2. * plane[0] * plane[1]);
+		ref(2,0) = (-2. * plane[0] * plane[2]);
+		ref(3,0) = (-2. * plane[3] * plane[0]);
+
+		ref(0,1) = (-2. * plane[1] * plane[0]);
+		ref(1,1) = (1. - 2. * plane[1] * plane[1]);
+		ref(2,1) = (-2. * plane[1] * plane[2]);
+		ref(3,1) = (-2. * plane[3] * plane[1]);
+
+		ref(0,2) = (-2. * plane[2] * plane[0]);
+		ref(1,2) = (-2. * plane[2] * plane[1]);
+		ref(2,2) = (1. - 2. * plane[2] * plane[2]);
+		ref(3,2) = (-2. * plane[3] * plane[2]);
+
+		ref(0,3) = 0.;
+		ref(1,3) = 0.;
+		ref(2,3) = 0.;
+		ref(3,3) = 1.;
+
+		return ref;
 	}
 
 }

@@ -4,10 +4,11 @@
 
 namespace ofxKinectForWindows2 {
 
+	typedef const ofxKFW2::Data::Body kBody;
+
 	class Kinect : public ofxKFW2::Device {
 
 	public:
-		typedef const ofxKFW2::Data::Body kBody;
 
 		Kinect() {
 			_flipFbo.allocate(1920, 1080, GL_RGBA);
@@ -22,10 +23,13 @@ namespace ofxKinectForWindows2 {
 		ofMatrix4x4 getFloorTransform();
 		ofVec3f getFloorOrigin()			{ return floorTransform.getTranslation(); }
 		ofQuaternion getFloorOrientation()	{ return floorTransform.getRotate(); }
-		ofVec3f getClosestPtOnFloorWorld(ofVec3f worldPos);
-		ofVec2f getClosestPtOnFloorPlane(ofVec3f worldPos);
+		ofVec3f getClosestPtOnFloor(ofVec3f pos);
+		ofVec3f getClosestPtOnFloorPlane(ofVec3f pos);		// x,z coords
+		ofVec2f getClosestPtOnFloorPlaneXY(ofVec3f pos);	// x,y coords
 
-		vector<Kinect::kBody *> getBodiesWithinBounds(ofRectangle floorBounds);
+		const vector<Data::Body>& getBodies();
+		vector<kBody*> getTrackedBodies();
+		vector<kBody*> getBodiesWithinBounds(ofRectangle floorBounds);
 
 		kBody* getCentralBodyPtr(float bodyQualityThreshold = 0.0);
 		int getCentralBodyIndex(float bodyQualityThreshold = 0.0); // returns -1 if no bodies
