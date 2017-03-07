@@ -61,7 +61,8 @@ namespace ofxKinectForWindows2 {
 		void setReflection(ofVec4f plane)	{ reflection = reflectionMatrix(plane); _bMirrorX = false; }
 		ofMatrix4x4 getReflection()			{ return reflection; }
 
-		void setMirrorX(bool mirror)	{ reflection = mirror ? reflectionX : ofMatrix4x4(); _bMirrorX = mirror; }
+		void setMirrorX(bool mirror)		{ reflection = mirror ? reflectionX : ofMatrix4x4();
+											  _bMirrorX = mirror; }
 		const bool getMirrorX() const	{ return _bMirrorX; }
 
 		bool setBody(kBody* body);	// returns true if change to user
@@ -74,6 +75,7 @@ namespace ofxKinectForWindows2 {
 		ofQuaternion getJointOrientation(JointType type, bool prev = false);
 		ofQuaternion getJointOrientationRaw(JointType type, bool prev = false);
 		const JointMap getJointMap() const { return _joints; }
+		const JointMap getJoints() const { return _joints; }
 
 		TrackingState getTrackingState(JointType type, bool prev = false);
 		const HandState getLeftHandState(bool prev = false) const;
@@ -106,6 +108,8 @@ namespace ofxKinectForWindows2 {
 		float getUserTime() { return (_startTime > 0 ? ofGetElapsedTimef() - _startTime : 0); }
 		float getUserStartTime() { return _startTime; }	// 0 if no body
 
+		ofMatrix4x4 reflectionMatrix(ofVec4f plane);
+
 	protected:
 
 		kBody* _bodyPtr = nullptr;
@@ -127,7 +131,7 @@ namespace ofxKinectForWindows2 {
 		vector<ofVec2f> _depthToColorCoords;
 		vector<ofVec3f> _depthToCameraCoords;
 
-		ofMatrix4x4 reflectionMatrix(ofVec4f plane);
+
 
 	private:
 

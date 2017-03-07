@@ -52,26 +52,30 @@ namespace ofxKinectForWindows2 {
 
 			// position
 			
-			p3d = p3dRaw * reflection * getGlobalTransformMatrix();
+			p3d = p3dRaw * getGlobalTransformMatrix();
 
 			// orientation
 
-			ori = oRaw ;//* getGlobalOrientation();
-			ofVec4f ori4 = ori.asVec4();
-			ofVec3f ori3 = ori.asVec3();
-			ori3 = ori3 * reflection;
-			ori.set(ori3.x,ori3.y,ori3.z,ori4.w); // fingers crossed...
-
+			ori = oRaw;
 
 			if (_bMirrorX) {
+
 				// mirror 2d
 				p2d.x = 1920 - p2d.x; // flip within color space
 
-				// mirror 3d orientation
-				//ofVec4f oRaw4 = oRaw.asVec4();
-				//oRaw4.x *= -1;
-				//oRaw4.w *= -1;
-				//ori.set(oRaw4);
+				p3d = p3d * reflection;
+
+				// mirror 3d orientation - done above by arbitrary axis
+				ofVec4f oRaw4 = oRaw.asVec4();
+				oRaw4.x *= -1;
+				oRaw4.w *= -1;
+				ori.set(oRaw4);
+			}
+			else if (!reflection.isIdentity()){
+				ofVec4f ori4 = oRaw.asVec4();
+				ofVec3f ori3 = ori4;
+				ori3 = ori3 * reflection;
+				ori.set(ori3.x,ori3.y,ori3.z,-1.*ori4.w); // fingers crossed...
 			}
 		}
 
