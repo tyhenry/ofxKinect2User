@@ -4,20 +4,23 @@ namespace ofxKinectForWindows2 {
 
 	bool User::setBody(kBody* bodyPtr) { // returns true if change to user
 		
-		if ((!bodyPtr && !_bodyPtr) || ( bodyPtr == _bodyPtr)) return false;
+		if ((!bodyPtr && !_bodyPtr) || ( bodyPtr == _bodyPtr)) return _bUserChanged = false;
 		
 		_bodyPtr = bodyPtr;
 		_startTime = bodyPtr ? ofGetElapsedTimef() : 0; // 0 if null body
+		_pJoints.clear(); _joints.clear();  			// new body, clear joint history
+
 		ofLogVerbose("ofxKFW2::User") << "set new body - ptr: " << (bodyPtr ? ofToString(bodyPtr) : "null");
-		return true;
+		return _bUserChanged = true;
 	}
 
 	// update
 	// ---------------------------------------------------------------------------
 
-	bool User::update() {
+	bool User::update(float lerp) {
 
 		// save and clear joint positions
+		if (_pJoints.size() == 0) lerp = 1.; // brand new user, no lerp this time
 		_pJoints = _joints;
 		_joints.clear();
 
@@ -48,6 +51,13 @@ namespace ofxKinectForWindows2 {
 			ofVec2f& p2d		= _joints[joint.first].pos2d			= joint.second.getProjected(_coordMapperPtr);
 								  _joints[joint.first].state			= joint.second.getTrackingState();
 
+			// lerp, must be 0-1
+			if (lerp > 0 && lerp < 1) {
+				auto& prevJoint = _pJoints.at(joint.first);
+				p3dRaw	= prevJoint.pos3dRaw.getInterpolated(p3dRaw, lerp);
+				oRaw.slerp(lerp, prevJoint.orientationRaw, oRaw);
+			}
+								  
 			// transform 
 
 			// position
@@ -77,6 +87,8 @@ namespace ofxKinectForWindows2 {
 				ori3 = ori3 * reflection;
 				ori.set(ori3.x,ori3.y,ori3.z,-1.*ori4.w); // fingers crossed...
 			}
+
+
 		}
 
 		// get new hand states

@@ -4,9 +4,9 @@
 
 namespace ofxKinectForWindows2 {
 
-	typedef const ofxKFW2::Data::Body kBody;
+	typedef const Data::Body kBody;
 
-	class Kinect : public ofxKFW2::Device {
+	class Kinect : public Device {
 
 	public:
 
@@ -21,11 +21,14 @@ namespace ofxKinectForWindows2 {
 		ofVec4f getFloorClipPlaneOfVec4f()	{ Vector4 f = getFloorClipPlane(); 
 											  return ofVec4f(f.x, f.y, f.z, f.w); }
 		ofMatrix4x4 getFloorTransform();
-		ofVec3f getFloorOrigin()			{ return floorTransform.getTranslation(); }
-		ofQuaternion getFloorOrientation()	{ return floorTransform.getRotate(); }
+		ofVec3f getFloorOrigin()			{ return getFloorTransform().getTranslation(); }
+		ofQuaternion getFloorOrientation()	{ return getFloorTransform().getRotate(); }
 		ofVec3f getClosestPtOnFloor(ofVec3f pos);
 		ofVec3f getClosestPtOnFloorPlane(ofVec3f pos);		// x,z coords
 		ofVec2f getClosestPtOnFloorPlaneXY(ofVec3f pos);	// x,y coords
+
+		ofVec3f worldToFloor(ofVec3f pos)	{ return pos * getFloorTransform().getInverse(); }
+		ofVec3f floorToWorld(ofVec3f pos)	{ return pos * getFloorTransform(); }
 
 		const vector<Data::Body>& getBodies();
 		vector<kBody*> getTrackedBodies();
@@ -52,6 +55,7 @@ namespace ofxKinectForWindows2 {
 		void drawColorSubsection(float x, float y, float w, float h,
 								 float sx, float sy, float sw, float sh);
 
+		void drawFloor(float stepSize=0.5, int nSteps=20, float axisSize=1., ofColor color=ofColor(200, 0, 210, 80));
 		void drawFloorBounds(ofRectangle floorBounds);
 
 	protected:

@@ -34,13 +34,11 @@ namespace ofxKinectForWindows2 {
 		auto & bodies = getBodySource()->getBodies();
 
 		int closestIdx = -1;
-		float closestDist = 0.7; // meters
-		float zThresh = 3;
+		float closestDist = 100; // meters
 		for (int i = 0; i < bodies.size(); i++) {
 			if (!bodies[i].tracked) continue; // skip untracked body
 			float dist = abs(bodies[i].joints.at(JointType_SpineBase).getPosition().x);
-			float z = abs(bodies[i].joints.at(JointType_SpineBase).getPosition().z);
-			if (dist < closestDist && z < zThresh) {
+			if (dist < closestDist ) {
 				closestIdx = i;
 				closestDist = dist;
 			}
@@ -76,26 +74,6 @@ namespace ofxKinectForWindows2 {
 			// distance to floor = dot(orig-pt, normal)
 
 		return pos + n*floorDist;
-
-		//ofVec2f pt;
-		//
-		//ofVec3f& p = worldPos;
-		//Vector4 fcp = getFloorClipPlane();
-		//ofVec3f fN = ofVec3f(fcp.x,fcp.y,fcp.z);
-		//float d = fcp.w;
-
-		//// pt = pos (x,y,z) + s * planeNormalVec
-		//// find c
-
-		//// pt = (x,y,z) + s * (pX,pY,pZ) ->
-		//// pt = ((x + s*pX), (y + s*pY), (z + s*zY))
-		//// using plane equation Ax+By+Cz+D = 0...
-		//// pX * (x + c*pX) + pY * (y + c*zY) + pZ * (z + c*pZ) + D = 0
-
-		//float dist = (p.x*fN.x + p.y*fN.y + p.z*fN.z) / (fN.x*fN.x + fN.y*fN.y + fN.z*fN.z);
-		//pt = p - fN*dist;
-
-		//return pt;
 	}
 
 	ofVec3f Kinect::getClosestPtOnFloorPlane(ofVec3f pos)
@@ -186,6 +164,21 @@ namespace ofxKinectForWindows2 {
 									 float sx, float sy, float sw, float sh) {
 
 		getColorTexture().drawSubsection(x, y, w, h, sx, sy, sw, sh);
+	}
+	void Kinect::drawFloor(float stepSize, int nSteps, float axisSize, ofColor color)
+	{
+		ofPushStyle();
+		ofPushMatrix();
+		{
+			getFloorTransform();
+			ofMultMatrix(floorTransform);
+			ofDrawAxis(axisSize);
+			ofSetColor(color);
+			ofRotate(90, 0, 0, 1);
+			ofDrawGridPlane(.5, 20);
+		}
+		ofPopMatrix();
+		ofPopStyle();
 	}
 	void Kinect::drawFloorBounds(ofRectangle floorBounds)
 	{

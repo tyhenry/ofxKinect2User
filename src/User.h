@@ -66,7 +66,7 @@ namespace ofxKinectForWindows2 {
 		const bool getMirrorX() const	{ return _bMirrorX; }
 
 		bool setBody(kBody* body);	// returns true if change to user
-		bool update(); // false if _bodyPtr is nullptr
+		bool update(float lerp = 1.); // return false if _bodyPtr is nullptr / lerp is pct 0-1
 
 		bool jointExists(JointType type, bool prev = false);
 		ofVec2f getJoint2dPos(JointType type, bool prev = false);
@@ -87,6 +87,7 @@ namespace ofxKinectForWindows2 {
 		ofVec2f getPosOnFloorPlane(Kinect* kinect)	{ return getPosOnFloor(kinect,false); }
 
 		const bool hasBody() const { return (_bodyPtr != nullptr); }
+		const bool isNew()	const { return _bUserChanged; }
 		bool hasCoordinateMapper() { return (_coordMapperPtr != nullptr); }
 
 		void draw(bool b3d = false, int alpha = 255);
@@ -131,7 +132,7 @@ namespace ofxKinectForWindows2 {
 		vector<ofVec2f> _depthToColorCoords;
 		vector<ofVec3f> _depthToCameraCoords;
 
-
+		bool _bUserChanged = false;
 
 	private:
 
