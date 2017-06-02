@@ -66,7 +66,7 @@ namespace ofxKinectForWindows2 {
 		const bool getMirrorX() const	{ return _bMirrorX; }
 
 		bool setBody(kBody* body);	// returns true if change to user
-		bool update(float lerp = 1.); // return false if _bodyPtr is nullptr / lerp is pct 0-1
+		bool update(float lerp = 1., float inferLerp = 1.); // return false if _bodyPtr is nullptr / lerp is pct 0-1
 
 		bool jointExists(JointType type, bool prev = false);
 		ofVec2f getJoint2dPos(JointType type, bool prev = false);

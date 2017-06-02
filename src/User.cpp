@@ -17,10 +17,10 @@ namespace ofxKinectForWindows2 {
 	// update
 	// ---------------------------------------------------------------------------
 
-	bool User::update(float lerp) {
+	bool User::update(float lerp, float inferLerp) {
 
 		// save and clear joint positions
-		if (_pJoints.size() == 0) lerp = 1.; // brand new user, no lerp this time
+		if (_pJoints.size() == 0) lerp = inferLerp = 1.; // brand new user, no lerp this time
 		_pJoints = _joints;
 		_joints.clear();
 
@@ -49,13 +49,16 @@ namespace ofxKinectForWindows2 {
 			ofVec3f& p3d		= _joints[joint.first].pos3d;
 			ofQuaternion& ori	= _joints[joint.first].orientation;
 			ofVec2f& p2d		= _joints[joint.first].pos2d			= joint.second.getProjected(_coordMapperPtr);
-								  _joints[joint.first].state			= joint.second.getTrackingState();
+			auto& tState		= _joints[joint.first].state			= joint.second.getTrackingState();
+
+
+			float l = (tState == TrackingState_Tracked) ? lerp : inferLerp;
 
 			// lerp, must be 0-1
-			if (lerp > 0 && lerp < 1) {
+			if (l > 0 && l < 1) {
 				auto& prevJoint = _pJoints.at(joint.first);
-				p3dRaw	= prevJoint.pos3dRaw.getInterpolated(p3dRaw, lerp);
-				oRaw.slerp(lerp, prevJoint.orientationRaw, oRaw);
+				p3dRaw	= prevJoint.pos3dRaw.getInterpolated(p3dRaw, l);
+				oRaw.slerp(l, prevJoint.orientationRaw, oRaw);
 			}
 								  
 			// transform 
